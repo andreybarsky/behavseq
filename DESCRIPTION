@@ -1,0 +1,25 @@
+Package: behavseq
+Title: Sequential methods for the behavioral sciences
+Version: 0.0.0.9000
+Date: 2015-03-06
+Author: James P. Curley <jc3181@columbia.edu>
+Maintainer: James P. Curley <jc3181@columbia.edu>
+Description: Sequential methods for the behavioral sciences
+License: >GPL-3
+Depends:
+    R (>= 3.1.0)
+LazyData: true
+Imports:
+    dplyr,
+    mipfp,
+    qualV,
+    reshape2,
+    stringi,
+    tidyr,
+    zoo
+Suggests:
+    knitr,
+    testthat
+URL: https://github.com/jalapic/behavseq
+BugReports: https://github.com/jalapic/behavseq
+VignetteBuilder: knitr

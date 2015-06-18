@@ -1,0 +1,526 @@
+---
+title: "behavseq"
+author: "Prof James P Curley"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+\  
+
+# Installation
+
+```{r}
+#devtools::install_github('jalapic/behavseq')
+library("behavseq")
+```
+
+\  
+
+------ 
+
+# Sequence types
+
+1. Vector Sequences
+
+These are sequences that are vectors of separte elements.
+
+```{r}
+vseq <- c("A", "C", "B", "E", "D", "A", "C", "E")
+```
+
+
+\  
+
+
+
+2. Character Sequences
+
+These are sequences that are character strings of one element.
+
+```{r}
+cseq <- "ACBEDACE"
+```
+
+\  
+
+
+#### Simple sequence manipulations
+
+a) You can switch between the two using `collapse` and `uncollapse`. e.g.
+
+```{r}
+collapse(vseq)
+
+uncollapse(cseq)
+
+```
+
+
+\ 
+
+
+b) You can drop repeated elements from a sequence using `seq_droprpt`.  Use `coll=T` if input is a character sequence:
+
+
+```{r}
+
+seq_droprpt(c("A", "A", "A", "B", "C","C", "C"))
+
+seq_droprpt('AAABBBCCCDDDEEEBBBAAA', coll=T)
+
+```
+
+
+
+\  
+
+c) Pairs (or triplets, etc.) of successive behavioral elements can also be derived from a character sequence into a vector sequence. Though note that codes that are at the end of a sequence and orphaned will be dropped and an empty element will exist e.g.
+
+```{r}
+uncollapse('ABCABCDEFDEF', n=2)
+uncollapse('ABCABCDEFDEFGH', n=3)
+
+```
+
+
+\ 
+
+d) Extract a subsequence from a sequence.  Define the beginning and end points of a character sequence to extract a subsequence.  The extracted subsequence will contain the behaviors occurring at both the beginning and end point.
+
+```{r}
+seq_clip("abacbabacbabcababacbcbcbabaaabababbababcb", b=4,e=10)
+```
+
+\ 
+
+
+e) Split a sequence into roughly equal parts.  This is done with `seq_split` and you can specify the number of (roughly equal) parts to split into.
+
+```{r}
+seq_split("abacbabacbabcababacbcbcbabaaabababbababcb", 2)
+seq_split("abacbabacbabcababacbcbcbabaaabababbababcb", 3)
+```
+
+
+\  
+
+-------
+
+# Extracting sequences from dataframe
+
+
+Most often behavioral data is stored in a dataframe with each row/observation representing the start time of a behavior. There are two utility functions included to extract sequence data from such a dataframe.
+
+This is an example dataframe showing the behavior of one mouse in a 20 minute test. In one column individual behaviors are coded, and in another those behaviors have been coded as belonging to one of seven types of state.  The first few and last few lines are as follows:
+
+```{r}
+head(mouse)
+tail(mouse)
+```
+
+\  
+
+To make a sequence, it is better to recode the behavior and state columns into single letters.  Here we'll create new columns containing the codes.
+
+```{r}
+behavs=unique(mouse$behavior)
+states=unique(mouse$state)
+
+
+df.behavs<-data.frame(behavs, codes=LETTERS[1:length(behavs)])
+df.states<-data.frame(states, codes=LETTERS[1:length(states)])
+
+mouse$behaviorX<-df.behavs$codes[match(mouse$behavior, df.behavs$behavs)]
+mouse$stateX<-df.states$codes[match(mouse$state, df.states$states)]
+
+df.behavs
+df.states
+
+head(mouse)
+tail(mouse)
+
+```
+
+
+\  
+
+
+**Simple Behavior Sequences**
+
+
+The function for getting a sequence from a dataframe is `get_seq`.  The names of columns containing the time (`vary`) and the codes (`varx`) to be made into a sequence should be stated. The start (`begin`) and end (`end`) time from which to cleave the sequence can also be provided.  Other options are whether to include or drop repeated codes, and whether to return a vector sequence or a character sequence (the default).
+
+
+```{r, message=FALSE}
+get_seq(mouse, varx = 'behaviorX', begin=0, end=100)
+get_seq(mouse, varx = 'behaviorX', drop=T, begin=0, end=100)
+
+get_seq(mouse, varx = 'stateX', begin=1100, end=1200)
+get_seq(mouse, varx = 'stateX', drop=T, begin=1100, end=1200)
+```
+
+
+\ 
+
+**Time Interval Based Sequence**
+
+Another type of sequence that can be encoded from such a dataframe of behavioral observations is a time-interval based sequence.  Here, a behavioral code is added to the sequence every *n* intervals of time units.  For instance, it might be desired to code what behavioral state an animal is in every second.  This can be done using the `get_seq0` function.
+
+The basic parameters to state are the names of the columns containing the codes (`varx`) and time units (`vary`), the start (`begin`) and end (`end`) times to calculate the sequence, as well as the `interval` of time units to select.  e.g. To select a code for every one second of the above 'mouse' dataframe:
+
+```{r}
+get_seq0(mouse, varx = 'behaviorX', begin=1150, end=1200, interval=1)
+```
+
+
+
+------
+
+# Simple calculations of Individual Behaviors
+
+
+**Observed Frequencies**
+
+Simple observed frequencies of behaviors in a sequence can be calculated using `seqfreq`. The input sequence is a character sequence:
+
+```{r}
+seqfreq("abacbabacbabcababacbcbcbabaaabababbababcb")
+```
+
+\  
+
+These can also be gotten using `seq_substrings`:
+
+```{r}
+seq_substrings("abacbabacbabcababacbcbcbabaaabababbababcb",1)
+```
+
+
+\ 
+
+The advantage of  `seq_substrings` is that it can calculate the observed frequency of a moving window of consecutive substrings in a character sequence of any given length. e.g.
+
+```{r}
+seq_substrings("abacbabacbabcababacbcbcbabaaabababbababcb",2)
+seq_substrings("abacbabacbabcababacbcbcbabaaabababbababcb",3)
+```
+
+\  
+
+
+
+
+**Unconditional probabilities**
+
+Simple unconditional probabilities of the frequency of each behavior can be calculated using `prob_ex`. The input sequence is a character sequence:
+
+```{r}
+prob_ex("abacbabacbabcababacbcbcbabaaabababbababcb")
+```
+
+
+\  
+
+
+**Conditional probabilities**
+
+Simple conditional probabilities of the frequency of each behavior given a preceding behavior at a lag of 1 can be calculated using `prob_con`. The input sequence is a character sequence:
+
+```{r}
+prob_con("abacbabacbabcababacbcbcbabaaabababbababcb")
+```
+
+\  
+
+Here, for intance, 'ab' refers to the probability of 'b' given 'a' or   "b|a". Future updates will include conditional probabilities at greater lags.  
+
+\  
+
+Also, I need to clarify this point.   Take a sequence such as:  **"ABCABCABC"** - then the conditional probabilities look like this:
+
+```{r}
+prob_con('ABCABCABC')
+```
+
+\  
+
+An issue here is that the last behavior "C" did not have an opportunity to have a subsequent behavior.  However, the conditional probability is calculated using the frequency of "C" as 3.   It is derived by observing that "CA" appears 2 times and "C" occurs 3 times.  This seems to be standard and accepted in sequential analysis but may be an issue for infrequent behaviors in short sequences.
+
+\  
+
+
+------
+
+# Simple Transition Matrices Descriptives
+
+
+\ 
+
+
+**1.Frequency Matrix of Observered Behaviors**
+
+To generate a Frequency State Transition Matrix of any lag directly from a sequence use `seq_obs`.  The lag can be specified, e.g.
+
+```{r}
+ seq_obs("abacbabacbabcababacbcbcbabaaabababbababcb")
+
+ seq_obs("abacbabacbabcababacbcbcbabaaabababbababcb", l=2)
+
+```
+
+
+\  
+
+
+**2.Transition Matrix of Conditional Probabilities**
+
+To generate a Probability State Transition Matrix of any lag directly from a sequence use `seq_trans`.  The lag can be specified, e.g.
+
+```{r}
+ seq_trans("abacbabacbabcababacbcbcbabaaabababbababcb")
+
+ seq_trans("abacbabacbabcababacbcbcbabaaabababbababcb", l=2)
+
+```
+
+
+
+\  
+
+It's also possible to calculate the Probability State Transition Matrix directly from the observed frequency matrix using `mat_trans`. e.g.
+
+```{r}
+a<-seq_obs("ababababcdcdbabdcbadbcadbcadcb")
+a
+mat_trans(a)
+
+seq_trans("ababababcdcdbabdcbadbcadbcadcb")
+```
+
+
+\
+
+This appears to work for other lags too, but needs more testing. e.g.
+
+```{r}
+a2<-seq_obs("ababababcdcdbabdcbadbcadbcadcb", l=2)
+a2
+mat_trans(a2)
+
+seq_trans("ababababcdcdbabdcbadbcadbcadcb", l=2)
+```
+
+\ 
+
+
+
+
+**3.Expected Frequency Matrix of Transitions**
+
+A simple way of calculating the expected frequency of first order transitions between behaviors in a sequence is to use `seq_exp`.  Please note that this will only calculate expected frequencies of first order transitions.  
+
+I would like to expose this function to additional testing.
+
+Example:
+
+```{r}
+ seq_exp("abacbabacbabcababacbcbcbabaaabababbababcb")
+```
+
+
+\  
+
+Additionally, it should not be used for calculating the expected frequency of transitions if structural zeros exist in the observed frequency matrix. For example, if behaviors cannot transition to themselves (i.e. a non-repeating sequence), the diagonal of the observed frequency matrix will be zeros.  A different method for calculating the expected transition frequencies needs to be used (see below).
+
+\  
+
+For non-repeating sequences, the diagonal of the observed frequencies matrix will always be zeros. These are called structural zeros. Example:
+
+```{r}
+ seq1 <- seq_droprpt("aaaaabbbaccccbabacbabccccbaabababacbcbcbabccbbccbaaabababbabccbaabccbabcbcbcbbaaaabbbcccba",coll=T)
+ seq1
+
+ seq_obs(seq1)
+
+```
+
+\  
+
+Using iterative proportional fitting it is possible to calculate the expected transition frequencies whilst keeping the diagonal structural zeros in place.  This can be done directly on the sequence using `seq_exp0`:
+
+```{r, message=FALSE}
+seq_exp0(seq1)
+```
+
+\  
+
+This function needs to be tested some more.
+
+\  
+
+
+\  
+
+------
+
+
+# Introductory Statistical Tests
+
+
+### Randomization Test of Behavioral Contingencies
+
+A simple method for determining if behaviors are connected in a sequence more commonly than expected by chance is to perform a randomization test.  For instance, here are the number of occurrences of the following two successive behaviors in the sequence: **abacbabacbabcababacbcbcbabaaabababbababcb**
+
+
+```{r}
+seq_substrings("abacbabacbabcababacbcbcbabaaabababbababcb",2)
+```
+
+
+\  
+
+
+To perform a randomization test, use `seq_rndtest`:
+
+```{r}
+seq_rndtest("abacbabacbabcababacbcbcbabaaabababbababcb",2,nperms=5000)
+```
+
+\  
+
+The returned vector gives the likelihood that the observed behavior occurred more frequently than expected by chance (one-tailed).  Future adaptions of this function could introduce a two-tailed version as well as to include contigencies that occur  with an observed frequency of 0 (e.g. CC in the above example) and to test if that is lower than chance.
+
+\  
+
+Here is the same test but looking at triplets of behavioral codes:
+
+```{r}
+seq_rndtest("abacbabacbabcababacbcbcbabaaabababbababcb",3,nperms=5000)
+```
+
+\  
+
+
+------
+
+
+### Binomial Tests
+
+
+\ 
+
+Much more to come...
+
+\ 
+
+
+\ 
+
+
+\ 
+
+------
+
+
+
+# Subsequences and Supersequences
+
+We previously used  `seq_substrings` to generate all subsequences^[Technically some would refer to these as substrings and not subsequences] of a specific length in a sequence.
+
+```{r}
+ seq_substrings("abacbabacbabcababacbcbcbabaaabababbababcb",2)
+```
+
+
+\  
+
+There are several other options:
+
+\ 
+
+**1. Test for a subsequence in a given sequence**
+
+Test if a given subsequence is present in a given sequence:
+
+```{r}
+subseq_in("ab", "adbcdbacbdabcd")
+subseq_in("abd", "adbcdbacbdabcd")
+```
+
+\
+
+
+**2. Find indices of a subsequence in a given sequence**
+
+The function `subseq_tot` finds the location/indices of a given subsequnce in a given sequence,as well as the total number of instances and frequency of the subsequence in a sequence.  *I need to check if the frequency is working properly.
+
+```{r}
+subseq_tot("ab", "adbcdbacbdabcdadbcdbabcbdabdabdbcdbacbd")
+```
+
+\ 
+
+This function is particularly useful for testing homogeneity of a subsequence across the length of a sequence.
+
+\  
+
+
+
+**3. Find the longest subsequence common to two sequences**
+
+To find the length of the longest subsequence  that is common to two sequences using `subseq_long`. e.g.
+
+```{r}
+subseq_long('ababdcbdabdbcabadbcbabbcbdabc', 'dbadbcdbadbcaddbdddbc')
+```
+
+\
+
+To simply return the longest subsequence(s) commmon to two sequences use `subseq_long0`:
+
+```{r}
+subseq_long0("ababdcbdabdbcabadbcbabbcbdabc", "dbadbcdbadbcaddbdddbc")
+
+subseq_long0("zxyzxyzxzxyzxyxyyxzyxzyxzyx", "yxyzxyzxzyxzxzxzxyyxzyxzxyzxy")
+
+```
+
+\ 
+
+
+**4. Find the longest common subsequence in two sequences**
+
+This is the typical definition of longest common subsequence between two sequences.  It is the underlying subsequence that is common to two sequences.  The function `subseq_lcs` will return a dataframe with the first column representing the longest common subsequence.  The second and third columns will indicate the indices of the LCS code in the original sequences.
+
+```{r}
+subseq_lcs('asdfasdfasdfasdf', 'asdgdsfagasdfsg')
+```
+
+\  
+
+The package has another, much faster, method for solving this problem which can be used setting the 'type' parameter.   This method utilizes the `LCS` function of the `qualV` library.   It's solution may not always agree with the "type='df" solution as not all possible solutions are returned.  For longer sequences, the likelihood is that both methods will return the same solution.
+
+```{r, message=FALSE}
+subseq_lcs('asdfasdfasdfasdf', 'asdgdsfagasdfsg', type="v")
+```
+
+
+\
+
+
+-------
+
+
+
+------
+
+# Appendix 1  - example sequences
+
+```{r}
+jaffe #source = page21, Gottman & Roy
+attneave #source = page72, Gottman & Roy
+```
